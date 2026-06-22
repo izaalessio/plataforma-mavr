@@ -1,6 +1,7 @@
 import streamlit as st
 import google.generativeai as genai
 import time
+from fpdf import FPDF
 
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Plataforma Científica MAVR", page_icon="🧬", layout="wide")
@@ -19,6 +20,16 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+# --- LÓGICA DE PDF PROFESIONAL ---
+class PDF_Academico(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 12)
+        self.cell(0, 10, 'Reporte de Investigacion Cientifica - MAVR', 0, 1, 'C')
+    def footer(self):
+        self.set_y(-15)
+        self.set_font('Arial', 'I', 8)
+        self.cell(0, 10, f'Pagina {self.page_no()}', 0, 0, 'C')
 
 # --- ARQUITECTURA INTERNA MAVR CON GEMINI ---
 class ModeloMAVR_Gemini:
@@ -42,13 +53,14 @@ class ModeloMAVR_Gemini:
         self.registro_auditoria.append("Bibliométrico: Extrayendo fuentes con DOIs estrictamente reales...")
         prompt = f"""
         Realiza una búsqueda científica profunda sobre: {self.tema_actual}.
-        1. Encuentra entre 10 y 15 fuentes de artículos de alto impacto.
-        2. REGLA ESTRICTA DE ENLACES: Usa ÚNICAMENTE enlaces DOI reales (formato: https://doi.org/10.xxxx/xxxx). Si no conoces el DOI exacto y real del artículo, NO lo incluyas. Está totalmente prohibido inventar URLs.
-        3. Para CADA fuente, proporciona: 
+        1. Encuentra un máximo de 10 fuentes de artículos de alto impacto. NO excedas este número para garantizar precisión.
+        2. REGLA ESTRICTA DE ENLACES: Usa ÚNICAMENTE enlaces DOI reales (formato: https://doi.org/10.xxxx/xxxx). 
+        3. ADVERTENCIA: Tienes estrictamente prohibido inventar, predecir o alucinar URLs. Si no estás 100% seguro de que el DOI existe y lleva a un artículo real, OMITE esa fuente.
+        4. Para CADA fuente, proporciona: 
            - Título exacto.
            - Autores y Revista.
            - Enlace DOI funcional.
-           - Un 'Fragmento de Valor': Una conclusión o dato clave de 3 líneas.
+           - Un 'Fragmento de Valor': Una conclusión clave.
         """
         self.datos_extraidos = self.model.generate_content(prompt).text
         return "Fuentes extraídas."
@@ -59,30 +71,24 @@ class ModeloMAVR_Gemini:
         Revisa estas fuentes extraídas y elimina cualquiera que no tenga un formato DOI válido:
         {self.datos_extraidos}
         
-        Instrucciones de Formato:
-        Para renderizar una interfaz perfecta, debes estructurar la lista FINAL exactamente con esta plantilla Markdown:
-        
+        Para renderizar la interfaz, estructura la lista FINAL exactamente con esta plantilla Markdown:
         ### 📌 [Título del Artículo](Enlace DOI)
         * 👥 **Autores:** [Nombres]
         * 🏛️ **Revista:** [Nombre de la revista]
         > 💡 **Aporte Fundamental:** "[Fragmento de Valor]"
-        
         ---
         """
         self.datos_validados = self.model.generate_content(prompt).text
-        self.registro_auditoria.append("Auditor: Interfaz de repositorio formateada.")
+        self.registro_auditoria.append("Auditor: Interfaz formateada.")
         return "Fuentes curadas."
 
     def capa_4_redactor(self, tono):
         self.registro_auditoria.append(f"Redactor: Generando manuscrito con IMRyD y tablas ({tono}).")
         prompt = f"""
-        Escribe un artículo extenso, profundo y detallado ({tono}) basado ÚNICAMENTE en esta información validada: {self.datos_validados}
-        
-        Instrucciones:
+        Escribe un artículo extenso y detallado ({tono}) basado ÚNICAMENTE en esta información validada: {self.datos_validados}
         1. Usa formato IMRyD (Introducción, Metodología, Resultados, Discusión).
-        2. OBLIGATORIO: Integra 2 TABLAS comparativas (Markdown) en Metodología y Resultados estructurando los datos de las fuentes.
-        3. Cita los autores en el texto fluidamente.
-        4. Añade "Referencias Bibliográficas" al final.
+        2. OBLIGATORIO: Integra 2 TABLAS comparativas (Markdown).
+        3. Añade "Referencias Bibliográficas" al final.
         """
         self.articulo_final = self.model.generate_content(prompt).text
         return "Artículo redactado."
@@ -91,17 +97,24 @@ class ModeloMAVR_Gemini:
         self.registro_auditoria.append("Sintetizador: Estructurando diseño de conclusiones.")
         prompt = f"""
         Basado en el artículo generado: {self.articulo_final}
-        Estructura la respuesta EXACTAMENTE con este diseño visual en Markdown:
-        
+        Estructura la respuesta con este diseño visual:
         ### 🎯 Conclusiones Principales
-        (Proporciona 4 viñetas detalladas con las conclusiones más fuertes)
-        
+        (4 viñetas detalladas)
         ---
         ### 🧠 Conceptos Clave
-        (Selecciona los 5 términos más técnicos del artículo y explícalos)
+        (5 términos técnicos explicados)
         """
         self.glosario = self.model.generate_content(prompt).text
         return "Síntesis terminada."
+
+    def generar_pdf(self, contenido):
+        pdf = PDF_Academico()
+        pdf.add_page()
+        pdf.set_font("Arial", size=11)
+        # Limpieza básica para evitar errores de codificación en PDF
+        texto_limpio = contenido.encode('latin-1', 'replace').decode('latin-1')
+        pdf.multi_cell(0, 8, texto_limpio)
+        return pdf.output(dest='S').encode('latin-1')
 
 # --- INTERFAZ DE USUARIO ---
 with st.sidebar:
@@ -111,9 +124,6 @@ with st.sidebar:
     st.divider()
     st.caption("© 2026 - Facultad de Ingeniería UNFV")
 
-# ==========================================
-# INYECCIÓN INTERNA SEGURA DE LA API KEY DESDE EL SERVIDOR
-# ==========================================
 try:
     API_KEY_SECRETA = st.secrets["GEMINI_API_KEY"]
 except:
@@ -149,19 +159,19 @@ with tab1:
             with st.status("Procesando red neuronal de investigación...", expanded=True) as status:
                 st.write("🔄 Definiendo protocolo metodológico...")
                 st.session_state.mavr.capa_1_orquestador(tema_investigacion)
-                time.sleep(2) 
+                time.sleep(10) # Pausa ampliada para evitar límite de velocidad
                 
                 st.write("🔍 Extrayendo lote de repositorios oficiales (DOI)...")
                 st.session_state.mavr.capa_2_bibliometrico()
-                time.sleep(3) 
+                time.sleep(10) 
                 
-                st.write("🛡️ Estructurando UI y verifying autenticidad de enlaces...")
+                st.write("🛡️ Estructurando UI y verificando autenticidad de enlaces...")
                 st.session_state.mavr.capa_3_auditor()
-                time.sleep(2)
+                time.sleep(10)
                 
                 st.write("✍️ Redactando documento y renderizando tablas de datos...")
                 st.session_state.mavr.capa_4_redactor(tono_redaccion)
-                time.sleep(3)
+                time.sleep(10)
                 
                 st.write("💡 Sintetizando conclusiones e indexando conceptos clave...")
                 st.session_state.mavr.capa_5_sintetizador()
@@ -171,11 +181,13 @@ with tab1:
             st.markdown(st.session_state.mavr.articulo_final)
             st.divider()
             
+            # Descarga de PDF
+            pdf_data = st.session_state.mavr.generar_pdf(st.session_state.mavr.articulo_final)
             st.download_button(
-                label="📥 Descargar Documento (TXT)",
-                data=st.session_state.mavr.articulo_final,
-                file_name=f"Investigacion_{tema_investigacion[:10]}.txt",
-                mime="text/plain",
+                label="📥 Descargar Documento en PDF Académico",
+                data=pdf_data,
+                file_name=f"Investigacion_MAVR.pdf",
+                mime="application/pdf",
                 use_container_width=True
             )
             
@@ -184,11 +196,7 @@ with tab1:
                     st.code(log, language="log")
                 
         except Exception as e:
-            error_msg = str(e)
-            if "429" in error_msg or "ResourceExhausted" in error_msg:
-                st.error("⚠️ Límite de procesamiento alcanzado. Por favor, espera 60 segundos antes de volver a intentarlo.")
-            else:
-                st.error(f"⚠️ Ha ocurrido un inconveniente interno: {error_msg}")
+            st.error(f"⚠️ Ha ocurrido un inconveniente: {str(e)}")
 
 with tab2:
     st.header("Repositorio de Fuentes Consultadas")

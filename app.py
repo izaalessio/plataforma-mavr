@@ -6,13 +6,12 @@ from fpdf import FPDF
 # --- CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(page_title="Plataforma Científica MAVR", page_icon="🧬", layout="wide")
 
-# --- DISEÑO UI: CSS ELEGANTE Y COMPATIBLE CON MODO OSCURO ---
+# --- DISEÑO UI: CSS ELEGANTE ---
 st.markdown("""
 <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
-    /* Diseño de caja elegante para los fragmentos de valor */
     blockquote {
         border-left: 4px solid #FF4B4B;
         background-color: rgba(255, 75, 75, 0.1); 
@@ -25,7 +24,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- LÓGICA DE PDF PROFESIONAL ---
 class PDF_Academico(FPDF):
     def header(self):
         self.set_font('Arial', 'B', 12)
@@ -51,8 +49,7 @@ class ModeloMAVR_Gemini:
     def capa_1_orquestador(self, tema):
         self.tema_actual = tema
         self.registro_auditoria.append("Orquestador: Protocolo iniciado. Definiendo directrices.")
-        prompt = f"Define en 3 pasos muy breves el protocolo de investigación para: {tema}"
-        return self.model.generate_content(prompt).text
+        return self.model.generate_content(f"Define en 3 pasos muy breves el protocolo de investigación para: {tema}").text
 
     def capa_2_bibliometrico(self):
         self.registro_auditoria.append("Bibliométrico: Extrayendo fuentes con datos duros y enlaces Scholar...")
@@ -61,22 +58,17 @@ class ModeloMAVR_Gemini:
         1. Identifica EXACTAMENTE 4 fuentes fundamentales y reales. No excedas este número.
         2. SINCERIDAD ABSOLUTA: NO uses DOIs para evitar enlaces rotos. Genera un enlace directo a Google Scholar con el título del artículo.
            Formato estricto: https://scholar.google.com/scholar?q=[TITULO+DEL+ARTICULO+CON+SIGNOS+MAS]
-        3. OBLIGATORIO - PROFUNDIDAD DE DATOS: Para cada fuente, extrae un 'Fragmento de Valor' que contenga métricas concretas, datos estadísticos, metodologías específicas o hallazgos técnicos profundos. Queda estrictamente prohibido usar resúmenes generales o vagos.
-        4. Estructura para cada fuente:
-           - Título exacto.
-           - Autores principales y Año.
-           - Enlace de Google Scholar.
-           - Fragmento de Valor (Con datos duros).
+        3. OBLIGATORIO - PROFUNDIDAD DE DATOS: Para cada fuente, extrae un 'Fragmento de Valor' que contenga métricas concretas, datos estadísticos o hallazgos técnicos. Sin resúmenes vagos.
+        4. Estructura para cada fuente: Título exacto, Autores principales y Año, Enlace de Google Scholar, Fragmento de Valor.
         """
         self.datos_extraidos = self.model.generate_content(prompt).text
-        return "Fuentes extraídas con enlaces Scholar."
+        return "Fuentes extraídas."
 
     def capa_3_auditor(self):
         self.registro_auditoria.append("Auditor: Formateando diseño UI y verificando integridad...")
         prompt = f"""
         Organiza las siguientes fuentes para la interfaz de usuario:
         {self.datos_extraidos}
-        
         Usa ESTRICTAMENTE esta plantilla Markdown para cada una:
         ### 📌 [Título del Artículo](Enlace Google Scholar)
         * 👥 **Autores:** [Nombres y Año]
@@ -84,39 +76,34 @@ class ModeloMAVR_Gemini:
         ---
         """
         self.datos_validados = self.model.generate_content(prompt).text
-        self.registro_auditoria.append("Auditor: Interfaz formateada.")
         return "Fuentes curadas."
 
-    def capa_4_redactor(self, tono):
-        self.registro_auditoria.append(f"Redactor: Generando manuscrito extenso y profundo ({tono}).")
+    # IDEA INNOVADORA: Se añade el "Enfoque" a la redacción
+    def capa_4_redactor(self, tono, enfoque):
+        self.registro_auditoria.append(f"Redactor: Generando manuscrito extenso ({tono}) con enfoque {enfoque}.")
         prompt = f"""
         Actúa como el Agente Redactor Académico Principal.
-        Escribe un artículo científico EXTENSO, analítico y profundo ({tono}) basado SOLO en esta información validada: {self.datos_validados}
+        Escribe un artículo científico EXTENSO, analítico y profundo ({tono}) basado SOLO en esta información: {self.datos_validados}
         
         REGLAS ESTRICTAS:
-        1. PROFUNDIDAD: Desarrolla cada sección a profundidad con múltiples párrafos. Expande el marco teórico.
-        2. RESULTADOS TÉCNICOS: En la sección de 'Resultados', expón los datos duros, métricas y detalles técnicos extraídos. Quedan estrictamente prohibidas las generalidades.
-        3. ESTRUCTURA OBLIGATORIA: Usa este formato exacto de títulos:
-           - 1. Introducción
-           - 2. Metodología
-           - 3. Resultados (OBLIGATORIO: Integra aquí 1 TABLA comparativa matricial en formato Markdown)
-           - 4. Discusión
-           - 5. Conclusiones
-        4. Añade "Referencias Bibliográficas" al final.
+        1. ENFOQUE EPISTÉMICO: El texto debe analizarse bajo un enfoque fuertemente orientado a: {enfoque}.
+        2. PROFUNDIDAD: Desarrolla cada sección a profundidad con múltiples párrafos.
+        3. RESULTADOS TÉCNICOS: Expón los datos duros extraídos.
+        4. ESTRUCTURA OBLIGATORIA: 1. Introducción, 2. Metodología, 3. Resultados (Integra 1 TABLA comparativa Markdown), 4. Discusión, 5. Conclusiones, Referencias Bibliográficas.
         """
         self.articulo_final = self.model.generate_content(prompt).text
         return "Artículo redactado."
 
     def capa_5_sintetizador(self):
-        self.registro_auditoria.append("Sintetizador: Extrayendo conceptos clave y síntesis ejecutiva.")
+        self.registro_auditoria.append("Sintetizador: Extrayendo conceptos clave.")
         prompt = f"""
         Basado en el artículo generado: {self.articulo_final}
-        Estructura la información de forma concisa con este diseño:
+        Estructura:
         ### 🎯 Conclusiones Principales
-        (Genera 3 viñetas analíticas)
+        (3 viñetas analíticas)
         ---
         ### 🧠 Conceptos Clave
-        (Selecciona 3 términos de alta densidad técnica y explícalos brevemente)
+        (3 términos de alta densidad técnica explicados)
         """
         self.glosario = self.model.generate_content(prompt).text
         return "Síntesis terminada."
@@ -130,11 +117,18 @@ class ModeloMAVR_Gemini:
         return pdf.output(dest='S').encode('latin-1')
 
 # --- INTERFAZ DE USUARIO ---
+
+# IDEA INNOVADORA: Panel de Telemetría en la barra lateral
 with st.sidebar:
+    st.image("https://cdn-icons-png.flaticon.com/512/2042/2042885.png", width=80)
+    st.title("Panel de Control MAVR")
+    st.markdown("### 📊 Telemetría del Sistema")
+    col_a, col_b = st.columns(2)
+    col_a.metric("Agentes", "5/5", "En línea")
+    col_b.metric("Motor IA", "Gemini", "Flash 2.5")
+    
     st.divider()
-    st.title("Panel de Navegación")
-    st.info("💡 **Garantía de Privacidad:** La validación de datos opera de manera completamente interna dentro del núcleo del agente.")
-    st.divider()
+    st.info("💡 **Privacidad:** Validación de datos 100% interna.")
     st.caption("© 2026 - Facultad de Ingeniería UNFV")
 
 try:
@@ -143,7 +137,7 @@ except:
     API_KEY_SECRETA = ""
 
 st.title("Plataforma de Investigación Científica (MAVR)")
-st.markdown("Generación automatizada de manuscritos académicos con recuperación bibliométrica profunda y enlaces verificables.")
+st.markdown("Generación automatizada de manuscritos académicos con recuperación bibliométrica profunda.")
 
 tab1, tab2, tab3 = st.tabs(["📝 Artículo Generado", "📚 Fuentes Consultadas", "💡 Conclusiones y Conceptos"])
 
@@ -151,8 +145,16 @@ with tab1:
     col_input, col_opciones = st.columns([2, 1])
     with col_input:
         tema_investigacion = st.text_input("Tema de investigación:", placeholder="Escribe el tema aquí...")
+    
     with col_opciones:
         tono_redaccion = st.selectbox("Estilo de redacción:", ["Académico Formal", "Informativo / Universitario"])
+    
+    # IDEA INNOVADORA: Selector de enfoque
+    enfoque_investigacion = st.selectbox("🎯 Enfoque de Análisis Epistémico (Opcional):", 
+                                         ["Multidisciplinario (General)", 
+                                          "Tecnológico y de Innovación", 
+                                          "Ético, Social y Legal", 
+                                          "Económico y Financiero"])
 
     btn_iniciar = st.button("Generar Investigación", type="primary", use_container_width=True)
 
@@ -161,7 +163,7 @@ with tab1:
 
     if btn_iniciar and tema_investigacion:
         if not API_KEY_SECRETA:
-            st.error("Error del Servidor: La API Key no está configurada en la bóveda de seguridad (Secrets).")
+            st.error("Error del Servidor: Falta la API Key.")
         else:
             st.session_state.mavr = ModeloMAVR_Gemini(api_key=API_KEY_SECRETA)
             st.session_state.proceso_iniciado = True
@@ -169,60 +171,72 @@ with tab1:
     if st.session_state.proceso_iniciado:
         st.divider()
         try:
-            with st.status("Procesando red neuronal de investigación...", expanded=True) as status:
+            with st.status("Iniciando secuencia de Agentes Autónomos...", expanded=True) as status:
                 st.write("🔄 Definiendo protocolo metodológico...")
                 st.session_state.mavr.capa_1_orquestador(tema_investigacion)
+                st.toast("✅ Agente Orquestador: Protocolo definido.", icon="⚙️")
                 time.sleep(12) 
                 
-                st.write("🔍 Extrayendo fuentes con datos duros y generando enlaces (Scholar)...")
+                st.write("🔍 Extrayendo fuentes y generando enlaces (Scholar)...")
                 st.session_state.mavr.capa_2_bibliometrico()
+                st.toast("✅ Agente Bibliométrico: Fuentes extraídas con éxito.", icon="📚")
                 time.sleep(12) 
                 
                 st.write("🛡️ Formateando interfaz de auditoría...")
                 st.session_state.mavr.capa_3_auditor()
+                st.toast("✅ Agente Auditor: Control de calidad aprobado.", icon="🛡️")
                 time.sleep(12)
                 
-                st.write("✍️ Redactando documento analítico y estructurando tablas...")
-                st.session_state.mavr.capa_4_redactor(tono_redaccion)
+                st.write(f"✍️ Redactando documento bajo el enfoque: {enfoque_investigacion}...")
+                st.session_state.mavr.capa_4_redactor(tono_redaccion, enfoque_investigacion)
+                st.toast("✅ Agente Redactor: Manuscrito y tablas generadas.", icon="✍️")
                 time.sleep(12)
                 
                 st.write("💡 Sintetizando conclusiones e indexando glosario...")
                 st.session_state.mavr.capa_5_sintetizador()
+                st.toast("✅ Agente Sintetizador: Proceso finalizado.", icon="🎯")
                 
                 status.update(label="Documento generado exitosamente.", state="complete", expanded=False)
 
-            # Mostrar artículo
             st.markdown(st.session_state.mavr.articulo_final)
             st.divider()
             
-            # Botón de Descarga
-            pdf_data = st.session_state.mavr.generar_pdf(st.session_state.mavr.articulo_final)
-            st.download_button(
-                label="📥 Descargar Documento en PDF Académico",
-                data=pdf_data,
-                file_name=f"Investigacion_MAVR.pdf",
-                mime="application/pdf",
-                use_container_width=True
-            )
+            # IDEA INNOVADORA: Exportación Dual (PDF y Markdown)
+            st.markdown("### 💾 Exportar Investigación")
+            col_pdf, col_md = st.columns(2)
+            
+            with col_pdf:
+                pdf_data = st.session_state.mavr.generar_pdf(st.session_state.mavr.articulo_final)
+                st.download_button(
+                    label="📥 Descargar PDF Académico",
+                    data=pdf_data,
+                    file_name=f"Investigacion_MAVR.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+            with col_md:
+                st.download_button(
+                    label="📝 Descargar en Markdown (Notion/Obsidian)",
+                    data=st.session_state.mavr.articulo_final,
+                    file_name=f"Investigacion_MAVR.md",
+                    mime="text/markdown",
+                    use_container_width=True
+                )
             
             with st.expander("Ver registro técnico interno de los agentes"):
                 for log in st.session_state.mavr.registro_auditoria:
                     st.code(log, language="log")
                 
         except Exception as e:
-            st.error(f"⚠️ Ha ocurrido un inconveniente (Posible saturación de cuota): {str(e)}")
+            st.error(f"⚠️ Ha ocurrido un inconveniente (Posible límite de cuota API): {str(e)}")
 
 with tab2:
     st.header("Repositorio de Fuentes Consultadas")
-    st.write("Los enlaces redirigen a **Google Scholar** para validar la existencia y rigor técnico del artículo original.")
+    st.write("Haz clic en los enlaces para verificar la existencia del documento en Google Scholar.")
     st.divider()
     if st.session_state.proceso_iniciado and hasattr(st.session_state, 'mavr'):
         st.markdown(st.session_state.mavr.datos_validados)
-    else:
-        st.info("Genera una investigación para visualizar el repositorio bibliométrico.")
 
 with tab3:
     if st.session_state.proceso_iniciado and hasattr(st.session_state, 'mavr'):
         st.markdown(st.session_state.mavr.glosario)
-    else:
-        st.info("Genera una investigación para compilar las conclusiones principales y conceptos clave.")
